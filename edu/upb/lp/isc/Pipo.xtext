@@ -1,0 +1,75 @@
+grammar edu.upb.lp.isc.Pipo with org.eclipse.xtext.common.Terminals
+
+generate pipo "http://www.upb.edu/lp/isc/Pipo"
+
+Program:
+	"#lang" "racket"
+	(elements+=AbstractElement)*;
+
+AbstractElement:
+	Expression | DataType;
+
+Expression:
+	(Conditional | Define | Function);
+
+Function:
+	FunctionCall;
+
+//ListFunction:
+//
+//;
+//
+//BooleanFunction:
+//
+//;
+//
+//StringFunction:
+//
+//;
+//
+//IntFunction:
+//
+//;
+FunctionCall:
+	'(' (method=[Define]) parameters+=(P)+ ')';
+
+P:
+	ID | DataType |Conditional
+;
+AritExpression:
+	(op=('+' | '-') parameters+=Expression);
+
+IntValue:
+	val=INT;
+
+Define:
+	DefineV | DefineF;
+
+DefineF:
+	'(' 'define' '(' name=ID parameter+=(ID)+ ')' body+= (Function | Conditional | DataType)+ ')'
+;
+
+DefineV:
+	'(' 'define' name=ID value=DataType ')' 
+;
+	
+Conditional:
+	 (If | Cond);
+
+Cond:
+	"(" 'cond' ('[' pos+=(Conditional | Function) result+=(Conditional | Function | DataType)? ']' )+ ('[' 'else' elseResult+=(Conditional | Function | DataType)']')? ")";
+
+If:
+	"(" 'if'  if+=(Function | If | Cond) pos1+=(Function | Conditional | DataType) pos2=(Function | Conditional | DataType) ")";
+
+DataType:
+	INT | STRING | BOOLEAN | List;
+
+List:
+	'(' 'list' (elements+=DataType)* ')';
+
+//terminal CHAR:
+// "gh"
+//;
+terminal BOOLEAN:
+	('#f'|'#F') | ('#t'|'#T');

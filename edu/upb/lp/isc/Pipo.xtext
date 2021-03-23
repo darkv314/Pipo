@@ -13,34 +13,34 @@ Expression:
 	(Conditional | Define | Function);
 
 Function:
-	FunctionCall;
+	FunctionCall | ;
 
-//ListFunction:
-//
-//;
-//
-//BooleanFunction:
-//
-//;
-//
-//StringFunction:
-//
-//;
-//
-//IntFunction:
-//
-//;
+ListFunction:
+
+;
+
+BooleanFunction:
+
+;
+
+StringFunction:
+
+;
+
+IntFunction:
+
+;
+
+GeneralFunctions:
+	
+;
+
 FunctionCall:
 	'(' (method=[Define]) parameters+=(P)+ ')';
 
 P:
 	ID | DataType |Conditional
 ;
-AritExpression:
-	(op=('+' | '-') parameters+=Expression);
-
-IntValue:
-	val=INT;
 
 Define:
 	DefineV | DefineF;

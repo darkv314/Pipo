@@ -4,72 +4,251 @@ generate pipo "http://www.upb.edu/lp/isc/Pipo"
 
 Program:
 	"#lang" "racket"
-	(elements+=AbstractElement)*;
+	(elements+=AbstractElement)+;
 
 AbstractElement:
-	Expression | DataType;
+	Expression | DataType | Define;
+
+General:
+	Expression | {General} ID | DataType;
 
 Expression:
-	(Conditional | Define | Function);
+	(Conditional | Function);
 
 Function:
-	FunctionCall | ;
+	FunctionCall | ListFunction | BooleanFunction | StringFunction | IntFunction | GeneralFunction;
+
+ValuesReturnList:
+	{ValuesReturnList} ID | Conditional | ListFunctionList | List | ListFunctionSomething;
+
+ValuesReturnInt:
+	{ValuesReturnInt} ID | Conditional | {ValuesReturnInt} INT | IntFunctionInt | ListFunctionInt | StringFunctionInt;
+
+ValuesReturnBoolean:
+	{ValuesReturnBoolean} ID | Expression | BooleanFunction | IntFunctionBoolean | ListFunctionBoolean // TODO
+;
+
+ValuesReturnString:
+	{ValuesReturnString} ID | StringFunctionString | {ValuesReturnString} STRING | FunctionCall | Conditional // TODO
+;
+
+GeneralFunction:
+	StringQ | IntegerQ | BooleanQ | ListQ | NullQ;
+
+NullQ:
+	'(' 'null?' null=(General) ')';
+
+StringQ:
+	'(' 'string?' string=(General) ')';
+
+IntegerQ:
+	'(' 'integer?' int=(General) ')';
+
+BooleanQ:
+	'(' 'boolean?' string=(General) ')';
+
+ListQ:
+	'(' 'list??' string=(General) ')';
 
 ListFunction:
+	ListFunctionBoolean | ListFunctionInt | ListFunctionSomething | ListFunctionList;
 
-;
+ListFunctionBoolean:
+	// No se si es necesario guardar, en la generacion y validaciones nos va a decir de que regla proviene?
+	'(' 'null' '?' ValuesReturnList ')';
 
-BooleanFunction:
+ListFunctionInt:
+	Length | IndexOF;
 
-;
+IndexOF:
+	'(' 'length' list=ValuesReturnList ')';
 
-StringFunction:
+Length:
+	'(' 'index-of' list=ValuesReturnList value=ValuesReturnInt ')';
 
-;
+ListFunctionSomething:
+	ListRef | Last | First;
+
+ListRef:
+	'(' 'list-ref' list=ValuesReturnList value=ValuesReturnInt ')';
+
+Last:
+	'(' 'last' list=ValuesReturnList ')';
+
+First:
+	'(' 'first' list=ValuesReturnList ')';
+
+ListFunctionList:
+	Append | Reverse | Remove | ListTail;
+
+ListTail:
+	'(' 'list-tail' list=ValuesReturnList value=ValuesReturnInt ')';
+
+Append:
+	'(' 'append' list=ValuesReturnList ')';
+
+Reverse:
+	'(' 'reverse' list=ValuesReturnList ')';
+
+Remove:
+	'(' 'remove' list=ValuesReturnList value=ValuesReturnInt ')';
 
 IntFunction:
+	IntFunctionInt | IntFunctionBoolean;
 
-;
+IntFunctionBoolean:
+	Equal | Greater | Less | GreaterOrEqual | LessOrEqual;
 
-GeneralFunctions:
-	
-;
+Equal:
+	'(' '=' bool1=ValuesReturnInt bool2=ValuesReturnInt ')';
+
+Greater:
+	'(' '>' bool1=ValuesReturnInt bool2=ValuesReturnInt ')';
+
+Less:
+	'(' '<' bool1=ValuesReturnInt bool2=ValuesReturnInt ')';
+
+GreaterOrEqual:
+	'(' '>=' bool1=ValuesReturnInt bool2=ValuesReturnInt ')';
+
+LessOrEqual:
+	'(' '<=' bool1=ValuesReturnInt bool2=ValuesReturnInt ')';
+
+IntFunctionInt:
+	Plus | Minus | Quotient | Product | Remainder | Gcd | Lcm | Abs | IntegerSqrt | Expt;
+
+Plus:
+	'(' '+' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+Minus:
+	'(' '-' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+Quotient:
+	'(' 'quotient' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+Product:
+	'(' '*' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+Remainder:
+	'(' 'remainder' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+Gcd:
+	'(' 'gcd' value1+=ValuesReturnInt+ ')';
+
+Lcm:
+	'(' 'lcm' value1+=ValuesReturnInt+ ')';
+
+Abs:
+	'(' 'abs' value1=ValuesReturnInt ')';
+
+IntegerSqrt:
+	'(' 'integer-sqrt' value1=ValuesReturnInt ')';
+
+Expt:
+	'(' 'Expt' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+
+BooleanFunction:
+	Not | And | Or | Nand | Nor;
+
+Nor:
+	'(' 'nor' argumentsNor+=ValuesReturnBoolean+ ')';
+
+Nand:
+	'(' 'nand' argumentsNand+=ValuesReturnBoolean+ ')';
+
+Or:
+	'(' 'or' argumentsOr+=ValuesReturnBoolean+ ')';
+
+And:
+	'(' 'and' argumentsAnd+=ValuesReturnBoolean+ ')';
+
+Not:
+	'(' 'not' toDeny=ValuesReturnBoolean ')';
+
+StringFunction:
+	StringFunctionInt | StringFunctionString | StringFunctionBoolean;
+
+StringFunctionString:
+	StringRef | StringSet | SubString | StringCopy | StringAppend | StringUpCase | StringDownCase | StringTitlecase;
+
+StringRef:
+	'(' 'string-ref' stringRef=(ValuesReturnString) ref=(ValuesReturnInt) ')';
+
+StringSet:
+	'(' 'string-set!' stringSet=(ValuesReturnString) position=ValuesReturnInt char=(ValuesReturnString) ')';
+
+SubString:
+	'(' 'substring' CompleteString=(ValuesReturnString) from=ValuesReturnInt (to=ValuesReturnInt)? ')';
+
+StringCopy:
+	'(' 'string-copy' (copy=(ValuesReturnString)) ')';
+
+StringAppend:
+	'(' 'string-append' toAppend+=(ValuesReturnString) ')';
+
+StringUpCase:
+	'(' 'string-upcase' toUp=ValuesReturnString ')';
+
+StringDownCase:
+	'(' 'string-downcase' toDown=ValuesReturnString ')';
+
+StringTitlecase:
+	'(' 'string-titlecase' title=ValuesReturnString ')';
+
+StringFunctionInt:
+	'(' 'string-length' length=(ValuesReturnString) ')';
+
+StringFunctionBoolean:
+	StringEq | StringCi | StringContains | StringPrefix | StringSuffix | NonEmptyString;
+
+StringEq:
+	'(' 'string=?' (toCompare+=ValuesReturnString)+ ')';
+
+StringCi:
+	'(' 'string-ci=?' (toCompare+=ValuesReturnString)+ ')';
+
+StringContains:
+	'(' 'string-contains?' container=ValuesReturnString toFound=ValuesReturnString ')';
+
+StringPrefix:
+	'(' 'string-prefix?' word=ValuesReturnString head=ValuesReturnString ')';
+
+StringSuffix:
+	'(' 'string-suffix?' word=ValuesReturnString tail=ValuesReturnString ')';
+
+NonEmptyString:
+	'(' 'non-empty-string?' noEmpty=(Function | Conditional) ')';
 
 FunctionCall:
-	'(' (method=[Define]) parameters+=(P)+ ')';
-
-P:
-	ID | DataType |Conditional
-;
+	'(' (method=[Define]) parameters+=General* ')';
 
 Define:
 	DefineV | DefineF;
 
 DefineF:
-	'(' 'define' '(' name=ID parameter+=(ID)+ ')' body+= (Function | Conditional | DataType)+ ')'
-;
+	'(' 'define' '(' name=ID parameter+=(ID)+ ')' body+=General+ ')';
 
 DefineV:
-	'(' 'define' name=ID value=DataType ')' 
-;
-	
+	'(' 'define' name=ID value=General ')';
+
 Conditional:
-	 (If | Cond);
+	(If | Cond);
 
 Cond:
-	"(" 'cond' ('[' pos+=(Conditional | Function) result+=(Conditional | Function | DataType)? ']' )+ ('[' 'else' elseResult+=(Conditional | Function | DataType)']')? ")";
+	"(" 'cond' ('[' pos+=(ValuesReturnBoolean) result+=(General)? ']')+ ('[' 'else' elseResult+=(General) ']')? ")";
 
 If:
-	"(" 'if'  if+=(Function | If | Cond) pos1+=(Function | Conditional | DataType) pos2=(Function | Conditional | DataType) ")";
+	"(" 'if' if+=ValuesReturnBoolean pos1+=(General) pos2=(General) ")";
 
 DataType:
-	INT | STRING | BOOLEAN | List;
+	{DataType} INT | {DataType} STRING | {DataType} BOOLEAN | List;
 
 List:
-	'(' 'list' (elements+=DataType)* ')';
+	'(' 'list' (elements+=General)+ ')' | {List} null='null';
 
-//terminal CHAR:
-// "gh"
-//;
 terminal BOOLEAN:
-	('#f'|'#F') | ('#t'|'#T');
+	('#f' | '#F') | ('#t' | '#T');
+
+@Override
+terminal ID:
+	'^'? ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '-' | '?')*;

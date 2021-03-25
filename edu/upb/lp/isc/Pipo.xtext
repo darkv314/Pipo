@@ -7,7 +7,11 @@ Program:
 	(elements+=AbstractElement)+;
 
 AbstractElement:
-	Expression | DataType | Define;
+	Expression | DataType | Define | {AbstractElement} COMENTARY;
+
+terminal COMENTARY:
+	';' !('\n'|'\r')* ('\r'? '\n')?
+;
 
 General:
 	Expression | {General} ID | DataType;
@@ -19,17 +23,17 @@ Function:
 	FunctionCall | ListFunction | BooleanFunction | StringFunction | IntFunction | GeneralFunction;
 
 ValuesReturnList:
-	{ValuesReturnList} ID | Conditional | ListFunctionList | List | ListFunctionSomething;
+	{ValuesReturnList} ID | Conditional | ListFunctionList | List | ListFunctionSomething | FunctionCall;
 
 ValuesReturnInt:
-	{ValuesReturnInt} ID | Conditional | {ValuesReturnInt} INT | IntFunctionInt | ListFunctionInt | StringFunctionInt;
+	{ValuesReturnInt} ID | Conditional | {ValuesReturnInt} INT | IntFunctionInt | ListFunctionInt | StringFunctionInt | FunctionCall | ListFunctionSomething;
 
 ValuesReturnBoolean:
-	{ValuesReturnBoolean} ID | Expression | BooleanFunction | IntFunctionBoolean | ListFunctionBoolean // TODO
+	{ValuesReturnBoolean} ID | BooleanFunction | IntFunctionBoolean | ListFunctionBoolean | FunctionCall | ListFunctionSomething
 ;
 
 ValuesReturnString:
-	{ValuesReturnString} ID | StringFunctionString | {ValuesReturnString} STRING | FunctionCall | Conditional // TODO
+	{ValuesReturnString} ID | StringFunctionString | {ValuesReturnString} STRING | FunctionCall | Conditional | ListFunctionSomething
 ;
 
 GeneralFunction:
@@ -248,7 +252,6 @@ List:
 
 terminal BOOLEAN:
 	('#f' | '#F') | ('#t' | '#T');
-
+	
 @Override
-terminal ID:
-	'^'? ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '-' | '?')*;
+terminal ID: '^'?('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-'|'?')*;

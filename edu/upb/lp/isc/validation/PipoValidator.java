@@ -3,23 +3,1269 @@
  */
 package edu.upb.lp.isc.validation;
 
+import java.util.HashMap;
+
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.xtext.validation.Check;
+
+import edu.upb.lp.isc.pipo.Abs;
+import edu.upb.lp.isc.pipo.And;
+import edu.upb.lp.isc.pipo.Append;
+import edu.upb.lp.isc.pipo.BooleanFunction;
+import edu.upb.lp.isc.pipo.BooleanValueReturn;
+import edu.upb.lp.isc.pipo.Cond;
+import edu.upb.lp.isc.pipo.Conditional;
+import edu.upb.lp.isc.pipo.DataType;
+import edu.upb.lp.isc.pipo.DefineF;
+import edu.upb.lp.isc.pipo.Expt;
+import edu.upb.lp.isc.pipo.First;
+import edu.upb.lp.isc.pipo.Function;
+import edu.upb.lp.isc.pipo.FunctionCall;
+import edu.upb.lp.isc.pipo.Gcd;
+import edu.upb.lp.isc.pipo.General;
+import edu.upb.lp.isc.pipo.GeneralFunction;
+import edu.upb.lp.isc.pipo.If;
+import edu.upb.lp.isc.pipo.IndexOF;
+import edu.upb.lp.isc.pipo.IntFunction;
+import edu.upb.lp.isc.pipo.IntFunctionBoolean;
+import edu.upb.lp.isc.pipo.IntFunctionInt;
+import edu.upb.lp.isc.pipo.IntValueReturn;
+import edu.upb.lp.isc.pipo.IntegerSqrt;
+import edu.upb.lp.isc.pipo.Last;
+import edu.upb.lp.isc.pipo.Lcm;
+import edu.upb.lp.isc.pipo.Length;
+import edu.upb.lp.isc.pipo.List;
+import edu.upb.lp.isc.pipo.ListFunction;
+import edu.upb.lp.isc.pipo.ListFunctionBoolean;
+import edu.upb.lp.isc.pipo.ListFunctionInt;
+import edu.upb.lp.isc.pipo.ListFunctionList;
+import edu.upb.lp.isc.pipo.ListFunctionSomething;
+import edu.upb.lp.isc.pipo.ListRef;
+import edu.upb.lp.isc.pipo.ListTail;
+import edu.upb.lp.isc.pipo.Minus;
+import edu.upb.lp.isc.pipo.Nand;
+import edu.upb.lp.isc.pipo.NonEmptyString;
+import edu.upb.lp.isc.pipo.Nor;
+import edu.upb.lp.isc.pipo.Not;
+import edu.upb.lp.isc.pipo.Or;
+import edu.upb.lp.isc.pipo.PipoPackage;
+import edu.upb.lp.isc.pipo.Plus;
+import edu.upb.lp.isc.pipo.Product;
+import edu.upb.lp.isc.pipo.Program;
+import edu.upb.lp.isc.pipo.Quotient;
+import edu.upb.lp.isc.pipo.Remainder;
+import edu.upb.lp.isc.pipo.Remove;
+import edu.upb.lp.isc.pipo.Reverse;
+import edu.upb.lp.isc.pipo.SimpleValuesReturn;
+import edu.upb.lp.isc.pipo.StringAppend;
+import edu.upb.lp.isc.pipo.StringCi;
+import edu.upb.lp.isc.pipo.StringContains;
+import edu.upb.lp.isc.pipo.StringDownCase;
+import edu.upb.lp.isc.pipo.StringEq;
+import edu.upb.lp.isc.pipo.StringFunction;
+import edu.upb.lp.isc.pipo.StringFunctionBoolean;
+import edu.upb.lp.isc.pipo.StringFunctionInt;
+import edu.upb.lp.isc.pipo.StringFunctionString;
+import edu.upb.lp.isc.pipo.StringPrefix;
+import edu.upb.lp.isc.pipo.StringRef;
+import edu.upb.lp.isc.pipo.StringSet;
+import edu.upb.lp.isc.pipo.StringSuffix;
+import edu.upb.lp.isc.pipo.StringTitlecase;
+import edu.upb.lp.isc.pipo.StringUpCase;
+import edu.upb.lp.isc.pipo.StringValueReturn;
+import edu.upb.lp.isc.pipo.SubString;
+import edu.upb.lp.isc.pipo.ValuesReturnBoolean;
+import edu.upb.lp.isc.pipo.ValuesReturnInt;
+import edu.upb.lp.isc.pipo.ValuesReturnList;
+import edu.upb.lp.isc.pipo.ValuesReturnString;
 
 /**
- * This class contains custom validation rules. 
+ * This class contains custom validation rules.
  *
- * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
+ * See
+ * https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
+
 public class PipoValidator extends AbstractPipoValidator {
-	
-//	public static final String INVALID_NAME = "invalidName";
-//
-//	@Check
-//	public void checkGreetingStartsWithCapital(Greeting greeting) {
-//		if (!Character.isUpperCase(greeting.getName().charAt(0))) {
-//			warning("Name should start with a capital",
-//					PipoPackage.Literals.GREETING__NAME,
-//					INVALID_NAME);
+
+	HashMap<List, String> typeList = new HashMap<>();
+	HashMap<String, String> typeFunction = new HashMap<>();
+	HashMap<Cond, String> typeCond = new HashMap<>();
+	HashMap<If, String> typeIf = new HashMap<>();
+	HashMap<String, HashMap<String, String>> typeParameter = new HashMap<String, HashMap<String, String>>();
+//	HashMap<Cond , String> typeCond = new HashMap<>();
+
+	@Check
+	public void checkExistingParameter(SimpleValuesReturn s) {
+		EObject clase = s.eContainer();
+		while (!(clase instanceof DefineF)) {
+			clase = clase.eContainer();
+			if (clase instanceof Program) {
+				error("Parameter call invalid, You're out of a Define declaration",
+						PipoPackage.Literals.SIMPLE_VALUES_RETURN__ID);
+				return;
+			}
+		}
+		boolean sw = false;
+		for (String ss : ((DefineF) clase).getParameter()) {
+			if (ss.equals(s.getId())) {
+				sw = true;
+				break;
+			}
+		}
+		if (!sw) {
+			error("The parameter does not exist", PipoPackage.Literals.SIMPLE_VALUES_RETURN__ID);
+		}
+	}
+
+	@Check
+	public void checkNumberOfParameter(FunctionCall f) {
+		DefineF d = ((DefineF) f.getMethod());
+		if (d.getParameter().size() < f.getParameters().size()) {
+			error(f.getParameters().size() - d.getParameter().size() + " Excess parameters",
+					PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
+		} else if (d.getParameter().size() > f.getParameters().size()) {
+			error(d.getParameter().size() - f.getParameters().size() + " Missing parameters",
+					PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
+		}
+	}
+
+	public String checkType(General g) {
+		if (g instanceof DataType) {
+			if (g instanceof IntValueReturn) {
+				return ("Int");
+			} else if (g instanceof StringValueReturn) {
+				return ("String");
+			} else if (g instanceof BooleanValueReturn) {
+				return ("Boolean");
+			} else if (g instanceof List) {
+				if (typeList.get(((List) g)) == null)
+					obtainListType((List) g);
+				return (typeList.get(((List) g)));
+			}
+		} else if (g instanceof SimpleValuesReturn) {
+			SimpleValuesReturn svr = (SimpleValuesReturn) g;
+			EObject e = svr.eContainer();
+			while (!(e instanceof DefineF)) {
+				e = e.eContainer();
+			}
+			DefineF df = (DefineF) e;
+			return (typeParameter.get(df.getName()).get(svr.getId()));
+		} else if (g instanceof Function) {
+			if (g instanceof FunctionCall) {
+				FunctionCall fc = (FunctionCall) g;
+				if (typeFunction.get((((FunctionCall) g).getMethod()).getName()) == null) {
+					obtainDefineType((DefineF) fc.getMethod());
+				}
+				return (typeFunction.get((((FunctionCall) g).getMethod()).getName()));
+			} else if (g instanceof IntFunction) {
+				if (g instanceof IntFunctionInt) {
+					return ("Int");
+				} else if (g instanceof IntFunctionBoolean) {
+					return ("Boolean");
+				}
+			} else if (g instanceof StringFunction) {
+				if (g instanceof StringFunctionInt) {
+					return ("Int");
+				} else if (g instanceof StringFunctionBoolean) {
+					return ("Boolean");
+				} else if (g instanceof StringFunctionString) {
+					return ("String");
+				}
+			} else if (g instanceof BooleanFunction) {
+				return ("Boolean");
+			} else if (g instanceof ListFunction) {
+				if (g instanceof ListFunctionInt) {
+					return ("Int");
+				} else if (g instanceof ListFunctionBoolean) {
+					return ("Boolean");
+				} else if (g instanceof ListFunctionList) {
+					if (g instanceof Append) {
+						Append app = (Append) g;
+						ValuesReturnList vrl1 = app.getList1();
+						ValuesReturnList vrl2 = app.getList2();
+						String s1 = obtainValuesReturnListType(vrl1);
+						String s2 = obtainValuesReturnListType(vrl2);
+						if (!s1.equals(s2)) {
+							return "Object";
+						} else {
+							return s1;
+						}
+					} else if (g instanceof ListTail) {
+						ListTail lt = (ListTail) g;
+						ValuesReturnList vrl1 = lt.getList();
+						String s1 = obtainValuesReturnListType(vrl1);
+						return s1;
+					} else if (g instanceof Remove) {
+						Remove rm = (Remove) g;
+						ValuesReturnList vrl1 = rm.getList();
+						String s1 = obtainValuesReturnListType(vrl1);
+						return s1;
+					} else if (g instanceof Reverse) {
+						Reverse rv = (Reverse) g;
+						ValuesReturnList vrl1 = rv.getList();
+						String s1 = obtainValuesReturnListType(vrl1);
+						return s1;
+					}
+				} else if (g instanceof ListFunctionSomething) {
+					String s1 = "";
+					if (g instanceof IndexOF) {
+						IndexOF io = (IndexOF) g;
+						ValuesReturnList vrl = io.getList();
+						s1 = obtainValuesReturnListType(vrl);
+					} else if (g instanceof Last) {
+						Last l = (Last) g;
+						ValuesReturnList vrl = l.getList1();
+						s1 = obtainValuesReturnListType(vrl);
+					} else if (g instanceof First) {
+						First f = (First) g;
+						ValuesReturnList vrl = f.getList2();
+						s1 = obtainValuesReturnListType(vrl);
+					}
+					return s1;
+				} else if (g instanceof GeneralFunction) {
+					return ("Boolean");
+				}
+			} else if (g instanceof Conditional) {
+				if (g instanceof If) {
+					If iif = (If) g;
+					if (typeIf.get(iif) == null) {
+						obtainIfType(iif);
+					}
+					return (typeIf.get(iif));
+				} else if (g instanceof Cond) {
+					Cond cond = (Cond) g;
+					if (typeCond.get(cond) == null) {
+						obtainCondType(cond);
+					}
+					return (typeCond.get(cond));
+				}
+			}
+		}
+		return null;
+	}
+
+	public void obtainDefineType(DefineF df) {
+		EList<General> body = df.getBody();
+		String name = df.getName();
+		if (body.get(body.size() - 1) instanceof FunctionCall) {
+			FunctionCall fc = (FunctionCall) body.get(body.size() - 1);
+			if (fc.getMethod().equals(df)) {
+				putTypeFunction("Object", df.getName());
+			}
+		} else {
+			General g = body.get(body.size() - 1);
+			putTypeFunction(checkType(g), name);
+		}
+	}
+
+	@Check
+	public void checkDefineType(DefineF df) {
+		obtainDefineType(df);
+		if (typeParameter.get(df.getName()) == null)
+			typeParameter.put(df.getName(), new HashMap<String, String>());
+//		EList<String> parameters = df.getParameter();
+//		for(int i=0; i<parameters.size(); i++) {
+//			obtainExpectedParameterType(parameters.get(i), df.getBody());
 //		}
-//	}
-	
+		if (typeFunction.get(df.getName()).endsWith("Object")) {
+			warning("This function returns an Object or a list of Objects, be careful!",
+					PipoPackage.Literals.DEFINE_F__BODY);
+		}
+	}
+
+	public void obtainIfType(If tinyIf) {
+		General g1 = tinyIf.getPos1();
+		General g2 = tinyIf.getPos2();
+		String s1 = checkType(g1);
+		String s2 = checkType(g2);
+		if (!s1.equals(s2)) {
+			typeIf.put(tinyIf, "Object");
+			// warning("This If statment returns Object, be careful!",
+			// PipoPackage.Literals.IF__POS1);
+		} else {
+			typeIf.put(tinyIf, s1);
+		}
+	}
+
+	@Check
+	public void checkIfType(If tinyIf) {
+		obtainIfType(tinyIf);
+		if (typeIf.get(tinyIf).endsWith("Object")) {
+			warning("The If statement returns an Object or a list of Objects, be careful!",
+					PipoPackage.Literals.IF__POS1);
+		}
+	}
+
+	public void obtainCondType(Cond cond) {
+		EList<General> results = cond.getResult();
+		for (int i = 0; i < results.size(); i++) {
+			String s = checkType(results.get(i));
+			if (i == 0) {
+				typeCond.put(cond, s);
+			} else if (!typeCond.get(cond).equals(s)) {
+				typeCond.put(cond, "Object"); // break ?
+			}
+		}
+	}
+
+	@Check
+	public void checkCondType(Cond cond) {
+		obtainCondType(cond);
+		if (typeCond.get(cond).endsWith("Object")) {
+			warning("The cond statement returns an Object or a list of Objects, be careful!",
+					PipoPackage.Literals.COND__RESULT);
+		}
+	}
+
+	public void obtainListType(List l) {
+		EList<General> arguments = l.getElements();
+		for (int i = 0; i < arguments.size(); i++) {
+			General argument = arguments.get(i);
+			putType(checkType(argument), i, l);
+		}
+		typeList.put(l, "ListOf" + typeList.get(l));
+	}
+
+	@Check
+	public void checkListType(List l) {
+		obtainListType(l);
+		if (typeList.get(l).endsWith("Object")) {
+			warning("The list has multiple types in it, be careful!", PipoPackage.Literals.LIST__ELEMENTS);
+		}
+	}
+
+	@Check
+	public void checkExpectedParameterType(SimpleValuesReturn svr) {
+		EObject e = svr.eContainer();
+		String id = svr.getId();
+		while (!(e instanceof DefineF)) {
+			e = e.eContainer();
+		}
+		DefineF df = (DefineF) e;
+		EObject container = svr.eContainer();
+		String name = df.getName();
+		if (container instanceof DefineF || container instanceof GeneralFunction || container instanceof FunctionCall
+				|| container instanceof Conditional) {
+			putWarning("Object", name, id);
+		} else if (container instanceof IntFunction) {
+			putWarning("Int", name, id);
+		} else if (container instanceof BooleanFunction) {
+			putWarning("Boolean", name, id);
+		} else if (container instanceof Last || container instanceof First || container instanceof ListFunctionBoolean
+				|| container instanceof Length || container instanceof Append) {
+			putWarning("ListOfObject", name, id);
+		} else if (container instanceof StringAppend || container instanceof StringUpCase
+				|| container instanceof StringDownCase || container instanceof StringTitlecase
+				|| container instanceof StringFunctionInt || container instanceof StringFunctionBoolean) {
+			putWarning("String", name, id);
+		} else if (container instanceof StringRef) {
+			StringRef str = (StringRef) container;
+			ValuesReturnString vrs = str.getStringRef();
+			ValuesReturnInt vri = str.getRef();
+			if (vrs instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrs).getId().equals(id)) {
+				putWarning("String", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof StringSet) {
+			StringSet str = (StringSet) container;
+			ValuesReturnString vrs = str.getStringSet();
+			ValuesReturnString vrs1 = str.getChar();
+			ValuesReturnInt vri = str.getPosition();
+			if (vrs instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrs).getId().equals(id)
+					|| vrs1 instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrs1).getId().equals(id)) {
+				putWarning("String", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof SubString) {
+			SubString str = (SubString) container;
+			ValuesReturnString vrs = str.getCompleteString();
+			ValuesReturnInt vri1 = str.getFrom();
+			ValuesReturnInt vri = str.getTo();
+			if (vrs instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrs).getId().equals(id)) {
+				putWarning("String", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)
+					|| vri1 instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri1).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof ListRef) {
+			ListRef list = (ListRef) container;
+			ValuesReturnList vrl = list.getList();
+			ValuesReturnInt vri = list.getValue();
+			if (vrl instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrl).getId().equals(id)) {
+				putWarning("ListOfObject", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof Remove) {
+			Remove list = (Remove) container;
+			ValuesReturnList vrl = list.getList();
+			ValuesReturnInt vri = list.getValue();
+			if (vrl instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrl).getId().equals(id)) {
+				putWarning("ListOfObject", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof ListTail) {
+			ListTail list = (ListTail) container;
+			ValuesReturnList vrl = list.getList();
+			ValuesReturnInt vri = list.getValue();
+			if (vrl instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrl).getId().equals(id)) {
+				putWarning("ListOfObject", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		} else if (container instanceof IndexOF) {
+			IndexOF list = (IndexOF) container;
+			ValuesReturnList vrl = list.getList();
+			ValuesReturnInt vri = list.getValue();
+			if (vrl instanceof SimpleValuesReturn && ((SimpleValuesReturn) vrl).getId().equals(id)) {
+				putWarning("ListOfObject", name, id);
+			} else if (vri instanceof SimpleValuesReturn && ((SimpleValuesReturn) vri).getId().equals(id)) {
+				putWarning("Int", name, id);
+			}
+		}
+	}
+
+	public void putType(String s, int index, List l) {
+		if (index == 0) {
+			typeList.put(l, s);
+		} else if (!typeList.get(l).equals(s)) {
+			typeList.put(l, "Object");
+		}
+	}
+
+	public void putTypeFunction(String s, String name) {
+		typeFunction.put(name, s);
+	}
+
+	public void putWarning(String type, String name, String id) {
+		if (typeParameter.get(name) == null)
+			typeParameter.put(name, new HashMap<String, String>());
+		if (typeParameter.get(name).get(id) != null && type.equals("Object"))
+			return;
+		if (typeParameter.get(name).get(id) != null && !typeParameter.get(name).get(id).equals(type)
+				&& !typeParameter.get(name).get(id).equals("Object")) {
+			typeParameter.get(name).put(id, "Variable");
+		} else {
+			typeParameter.get(name).put(id, type);
+		}
+		if (typeParameter.get(name).get(id).equals("Variable"))
+			error("This parameter is being called as two different dataTypes",
+					PipoPackage.Literals.SIMPLE_VALUES_RETURN__ID);
+		if (typeParameter.get(name).get(id).equals("Object"))
+			warning("This parameter depends on function call, be careful!",
+					PipoPackage.Literals.SIMPLE_VALUES_RETURN__ID);
+		// warning("Im putting " + type + " in the parameter " + id,
+		// PipoPackage.Literals.SIMPLE_VALUES_RETURN__ID);
+	}
+
+	@Check
+	public void checkPlusParameters(Plus p) {
+		EList<ValuesReturnInt> v2 = p.getValue2();
+		String s = obtainValuesReturnIntType(p.getValue1());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PLUS__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.PLUS__VALUE1);
+		}
+		for (int i = 0; i < v2.size(); i++) {
+			s = obtainValuesReturnIntType(v2.get(i));
+			if (!s.endsWith("Int")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PLUS__VALUE2);
+				} else
+					error("Int expected, " + s + " given", PipoPackage.Literals.PLUS__VALUE2);
+			}
+		}
+	}
+
+	@Check
+	public void checkMinusParameters(Minus m) {
+		EList<ValuesReturnInt> v2 = m.getValue2();
+		String s = obtainValuesReturnIntType(m.getValue1());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.MINUS__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.MINUS__VALUE1);
+		}
+		for (int i = 0; i < v2.size(); i++) {
+			s = obtainValuesReturnIntType(v2.get(i));
+			if (!s.endsWith("Int")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.MINUS__VALUE2);
+				} else
+					error("Int expected, " + s + " given", PipoPackage.Literals.MINUS__VALUE2);
+			}
+		}
+	}
+
+	@Check
+	public void checkProductParameters(Product p) {
+		EList<ValuesReturnInt> v2 = p.getValue2();
+		String s = obtainValuesReturnIntType(p.getValue1());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PRODUCT__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.PRODUCT__VALUE1);
+		}
+		for (int i = 0; i < v2.size(); i++) {
+			s = obtainValuesReturnIntType(v2.get(i));
+			if (!s.endsWith("Int")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.PRODUCT__VALUE2);
+				} else
+					error("Int expected, " + s + " given", PipoPackage.Literals.PRODUCT__VALUE2);
+			}
+		}
+	}
+
+	@Check
+	public void checkQuotientParameters(Quotient q) {
+		String s = obtainValuesReturnIntType(q.getValue1());
+		String s1 = obtainValuesReturnIntType(q.getValue2());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.QUOTIENT__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.QUOTIENT__VALUE1);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.QUOTIENT__VALUE2);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.QUOTIENT__VALUE2);
+		}
+	}
+
+	@Check
+	public void checkRemainderParameters(Remainder r) {
+		String s = obtainValuesReturnIntType(r.getValue1());
+		String s1 = obtainValuesReturnIntType(r.getValue2());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMAINDER__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.REMAINDER__VALUE1);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMAINDER__VALUE2);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.REMAINDER__VALUE2);
+		}
+	}
+
+	@Check
+	public void checkGcdParameters(Gcd g) {
+		EList<ValuesReturnInt> v = g.getValue1();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnIntType(v.get(i));
+			if (!s.endsWith("Int")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.GCD__VALUE1);
+				} else
+					error("Int expected, " + s + " given", PipoPackage.Literals.GCD__VALUE1);
+			}
+		}
+	}
+
+	@Check
+	public void checkLcmParameters(Lcm l) {
+		EList<ValuesReturnInt> v = l.getValue1();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnIntType(v.get(i));
+			if (!s.endsWith("Int")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LCM__VALUE1);
+				} else
+					error("Int expected, " + s + " given", PipoPackage.Literals.LCM__VALUE1);
+			}
+		}
+	}
+
+	@Check
+	public void checkAbsParameters(Abs a) {
+		String s = obtainValuesReturnIntType(a.getValue1());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.ABS__VALUE1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.ABS__VALUE1);
+		}
+	}
+
+	@Check
+	public void checkIntFunctionBooleanParameters(IntFunctionBoolean ifb) {
+		String s = obtainValuesReturnIntType(ifb.getBool1());
+		String s1 = obtainValuesReturnIntType(ifb.getBool2());
+		if (!s.endsWith("Int")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL1);
+			} else
+				error("Int expected, " + s + " given", PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL1);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL2);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL2);
+		}
+	}
+
+	@Check
+	public void checkNotParameters(Not n) {
+		String s = obtainValuesReturnBooleanType(n.getToDeny());
+		if (!s.endsWith("Boolean")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.NOT__TO_DENY);
+			} else
+				error("Boolean expected, " + s + " given", PipoPackage.Literals.NOT__TO_DENY);
+		}
+	}
+
+	@Check
+	public void checkNotParameters(And a) {
+		EList<ValuesReturnBoolean> v = a.getArgumentsAnd();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnBooleanType(v.get(i));
+			if (!s.endsWith("Boolean")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.AND__ARGUMENTS_AND);
+				} else
+					error("Boolean expected, " + s + " given", PipoPackage.Literals.AND__ARGUMENTS_AND);
+			}
+		}
+	}
+
+	@Check
+	public void checkNotParameters(Or o) {
+		EList<ValuesReturnBoolean> v = o.getArgumentsOr();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnBooleanType(v.get(i));
+			if (!s.endsWith("Boolean")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.OR__ARGUMENTS_OR);
+				} else
+					error("Boolean expected, " + s + " given", PipoPackage.Literals.OR__ARGUMENTS_OR);
+			}
+		}
+	}
+
+	@Check
+	public void checkNotParameters(Nand n) {
+		EList<ValuesReturnBoolean> v = n.getArgumentsNand();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnBooleanType(v.get(i));
+			if (!s.endsWith("Boolean")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.NAND__ARGUMENTS_NAND);
+				} else
+					error("Boolean expected, " + s + " given", PipoPackage.Literals.NAND__ARGUMENTS_NAND);
+			}
+		}
+	}
+
+	@Check
+	public void checkNotParameters(Nor n) {
+		EList<ValuesReturnBoolean> v = n.getArgumentsNor();
+		String s = "";
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnBooleanType(v.get(i));
+			if (!s.endsWith("Boolean")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.NOR__ARGUMENTS_NOR);
+				} else
+					error("Boolean expected, " + s + " given", PipoPackage.Literals.NOR__ARGUMENTS_NOR);
+			}
+		}
+	}
+
+	@Check
+	public void checkStringFunctionIntParameters(StringFunctionInt sfi) {
+		String s = obtainValuesReturnStringType(sfi.getLength());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_FUNCTION_INT__LENGTH);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_FUNCTION_INT__LENGTH);
+		}
+	}
+
+	@Check
+	public void checkStringEqParameters(StringEq se) {
+		String s = obtainValuesReturnStringType(se.getToCompare());
+		String s1 = obtainValuesReturnStringType(se.getToCompare2());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_EQ__TO_COMPARE);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_EQ__TO_COMPARE);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_EQ__TO_COMPARE2);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_EQ__TO_COMPARE2);
+		}
+	}
+
+	@Check
+	public void checkStringCiParameters(StringCi sc) {
+		String s = obtainValuesReturnStringType(sc.getToCompare());
+		String s1 = obtainValuesReturnStringType(sc.getToCompare2());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_CI__TO_COMPARE);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_CI__TO_COMPARE);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_CI__TO_COMPARE2);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_CI__TO_COMPARE2);
+		}
+	}
+
+	@Check
+	public void checkStringContainsParameters(StringContains sc) {
+		String s = obtainValuesReturnStringType(sc.getToFound());
+		String s1 = obtainValuesReturnStringType(sc.getContainer());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_CONTAINS__TO_FOUND);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_CONTAINS__TO_FOUND);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_CONTAINS__CONTAINER);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_CONTAINS__CONTAINER);
+		}
+	}
+
+	@Check
+	public void checkStringPrefixParameters(StringPrefix sp) {
+		String s = obtainValuesReturnStringType(sp.getWord());
+		String s1 = obtainValuesReturnStringType(sp.getHead());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_PREFIX__WORD);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_PREFIX__WORD);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_PREFIX__HEAD);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_PREFIX__HEAD);
+		}
+	}
+
+	@Check
+	public void checkStringSufixParameters(StringSuffix sf) {
+		String s = obtainValuesReturnStringType(sf.getWord());
+		String s1 = obtainValuesReturnStringType(sf.getTail());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_SUFFIX__WORD);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_SUFFIX__WORD);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_SUFFIX__TAIL);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_SUFFIX__TAIL);
+		}
+	}
+
+	@Check
+	public void checkStringRefParameters(StringRef sr) {
+		String s = obtainValuesReturnStringType(sr.getStringRef());
+		String s1 = obtainValuesReturnIntType(sr.getRef());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_REF__STRING_REF);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_REF__STRING_REF);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.STRING_REF__REF);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.STRING_REF__REF);
+		}
+	}
+
+	@Check
+	public void checkStringSetParameters(StringSet st) {
+		String s = obtainValuesReturnStringType(st.getStringSet());
+		String s1 = obtainValuesReturnStringType(st.getChar());
+		String s2 = obtainValuesReturnIntType(st.getPosition());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_SET__STRING_SET);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_SET__STRING_SET);
+		}
+		if (!s1.endsWith("String")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.STRING_SET__CHAR);
+			} else
+				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_SET__CHAR);
+		}
+		if (!s2.endsWith("Int")) {
+			if (s2.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_SET__POSITION);
+			} else
+				error("Int expected, " + s2 + " given", PipoPackage.Literals.STRING_SET__POSITION);
+		}
+	}
+
+	@Check
+	public void checkSubStringRefParameters(SubString sb) {
+		String s = obtainValuesReturnStringType(sb.getCompleteString());
+		String s1 = obtainValuesReturnIntType(sb.getTo());
+		String s2 = obtainValuesReturnIntType(sb.getFrom());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.SUB_STRING__COMPLETE_STRING);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.SUB_STRING__COMPLETE_STRING);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.SUB_STRING__TO);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.SUB_STRING__TO);
+		}
+		if (!s2.endsWith("Int")) {
+			if (s2.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.SUB_STRING__FROM);
+			} else
+				error("Int expected, " + s2 + " given", PipoPackage.Literals.SUB_STRING__FROM);
+		}
+	}
+
+	@Check
+	public void checkStringAppendParameters(StringAppend sa) {
+		String s = obtainValuesReturnStringType(sa.getToAppend());
+		EList<ValuesReturnString> v = sa.getToAppend2();
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_APPEND__TO_APPEND);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_APPEND__TO_APPEND);
+		}
+		for (int i = 0; i < v.size(); i++) {
+			s = obtainValuesReturnStringType(v.get(i));
+			if (!s.endsWith("String")) {
+				if (s.endsWith("Object")) {
+					warning("This call may not work, the parameter type is Object",
+							PipoPackage.Literals.STRING_APPEND__TO_APPEND2);
+				} else
+					error("String expected, " + s + " given", PipoPackage.Literals.STRING_APPEND__TO_APPEND2);
+			}
+		}
+	}
+
+	@Check
+	public void checkStringUpCaseParameters(StringUpCase su) {
+		String s = obtainValuesReturnStringType(su.getToUp());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_UP_CASE__TO_UP);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_UP_CASE__TO_UP);
+		}
+	}
+
+	@Check
+	public void checkStringDownCaseParameters(StringDownCase sd) {
+		String s = obtainValuesReturnStringType(sd.getToDown());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_DOWN_CASE__TO_DOWN);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_DOWN_CASE__TO_DOWN);
+		}
+	}
+
+	@Check
+	public void checkStringTitleCaseParameters(StringTitlecase st) {
+		String s = obtainValuesReturnStringType(st.getTitle());
+		if (!s.endsWith("String")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.STRING_TITLECASE__TITLE);
+			} else
+				error("String expected, " + s + " given", PipoPackage.Literals.STRING_TITLECASE__TITLE);
+		}
+	}
+
+	@Check
+	public void checkListFunctionBooleanParameters(ListFunctionBoolean lfb) {
+		String s = obtainValuesReturnListType(lfb.getList());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object",
+						PipoPackage.Literals.LIST_FUNCTION_BOOLEAN__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.LIST_FUNCTION_BOOLEAN__LIST);
+		}
+	}
+
+	@Check
+	public void checkLengthtParameters(Length l) {
+		String s = obtainValuesReturnListType(l.getList1());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LENGTH__LIST1);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.LENGTH__LIST1);
+		}
+	}
+
+	@Check
+	public void checkIndexOfParameters(IndexOF i) {
+		String s = obtainValuesReturnListType(i.getList());
+		String s1 = obtainValuesReturnIntType(i.getValue());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.INDEX_OF__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.INDEX_OF__VALUE);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.INDEX_OF__VALUE);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.INDEX_OF__VALUE);
+		}
+	}
+
+	@Check
+	public void checkListReftParameters(ListRef lr) {
+		String s = obtainValuesReturnListType(lr.getList());
+		String s1 = obtainValuesReturnIntType(lr.getValue());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_REF__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.LIST_REF__LIST);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_REF__VALUE);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.LIST_REF__VALUE);
+		}
+	}
+
+	@Check
+	public void checkFirstParameters(First f) {
+		String s = obtainValuesReturnListType(f.getList2());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.FIRST__LIST2);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.FIRST__LIST2);
+		}
+	}
+
+	@Check
+	public void checkLastParameters(Last l) {
+		String s = obtainValuesReturnListType(l.getList1());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LAST__LIST1);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.LAST__LIST1);
+		}
+	}
+
+	@Check
+	public void checkListTailParameters(ListTail l) {
+		String s = obtainValuesReturnListType(l.getList());
+		String s1 = obtainValuesReturnIntType(l.getValue());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_TAIL__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.LIST_TAIL__LIST);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_TAIL__VALUE);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.LIST_TAIL__VALUE);
+		}
+	}
+
+	@Check
+	public void checkAppendParameters(Append a) {
+		String s = obtainValuesReturnListType(a.getList1());
+		String s1 = obtainValuesReturnListType(a.getList2());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.APPEND__LIST1);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.APPEND__LIST1);
+		}
+		if (!s1.startsWith("List")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.APPEND__LIST2);
+			} else
+				error("List expected, " + s1 + " given", PipoPackage.Literals.APPEND__LIST2);
+		}
+		if (!s1.equals(s)) {
+			warning("You're attempting to append list of different types, be Careful!",
+					PipoPackage.Literals.APPEND__LIST1);
+		}
+	}
+
+	@Check
+	public void checkReverseParameters(Reverse r) {
+		String s = obtainValuesReturnListType(r.getList());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REVERSE__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.REVERSE__LIST);
+		}
+	}
+
+	@Check
+	public void checkRemoveParameters(Remove r) {
+		String s = obtainValuesReturnListType(r.getList());
+		String s1 = obtainValuesReturnIntType(r.getValue());
+		if (!s.startsWith("List")) {
+			if (s.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMOVE__LIST);
+			} else
+				error("List expected, " + s + " given", PipoPackage.Literals.REMOVE__LIST);
+		}
+		if (!s1.endsWith("Int")) {
+			if (s1.endsWith("Object")) {
+				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMOVE__VALUE);
+			} else
+				error("Int expected, " + s1 + " given", PipoPackage.Literals.REMOVE__VALUE);
+		}
+	}
+
+	public String obtainValuesReturnIntType(ValuesReturnInt vri) {
+		if (vri instanceof SimpleValuesReturn) {
+			EObject container = ((SimpleValuesReturn) vri).eContainer();
+			while (!(container instanceof DefineF)) {
+				container = container.eContainer();
+			}
+			DefineF df = (DefineF) container;
+			return (typeParameter.get(df.getName()).get(((SimpleValuesReturn) vri).getId()));
+		} else if (vri instanceof Conditional) {
+			if (vri instanceof If) {
+				if (typeIf.get((If) vri) == null)
+					obtainIfType((If) vri);
+				return (typeIf.get((If) vri));
+			} else if (vri instanceof Cond) {
+				if (typeCond.get((Cond) vri) == null)
+					obtainCondType((Cond) vri);
+				return (typeCond.get((Cond) vri));
+			}
+		} else if (vri instanceof ListFunctionSomething) {
+			if (vri instanceof IndexOF) {
+				IndexOF io = (IndexOF) vri;
+				return obtainValuesReturnListType(io.getList());
+			} else if (vri instanceof Last) {
+				Last l = (Last) vri;
+				return obtainValuesReturnListType(l.getList1());
+			} else if (vri instanceof First) {
+				First f = (First) vri;
+				return obtainValuesReturnListType(f.getList2());
+			}
+		} else if (vri instanceof FunctionCall) {
+			FunctionCall fc = (FunctionCall) vri;
+			DefineF df = (DefineF) fc.getMethod();
+			if (typeFunction.get(df.getName()) == null) {
+				obtainDefineType(df);
+			}
+			return (typeFunction.get(df.getName()));
+		}
+		return "Int";
+	}
+
+	public String obtainValuesReturnBooleanType(ValuesReturnBoolean vrb) {
+		if (vrb instanceof SimpleValuesReturn) {
+			EObject container = ((SimpleValuesReturn) vrb).eContainer();
+			while (!(container instanceof DefineF)) {
+				container = container.eContainer();
+			}
+			DefineF df = (DefineF) container;
+			return (typeParameter.get(df.getName()).get(((SimpleValuesReturn) vrb).getId()));
+		} else if (vrb instanceof Conditional) {
+			if (vrb instanceof If) {
+				if (typeIf.get((If) vrb) == null)
+					obtainIfType((If) vrb);
+				return (typeIf.get((If) vrb));
+			} else if (vrb instanceof Cond) {
+				if (typeCond.get((Cond) vrb) == null)
+					obtainCondType((Cond) vrb);
+				return (typeCond.get((Cond) vrb));
+			}
+		} else if (vrb instanceof ListFunctionSomething) {
+			if (vrb instanceof IndexOF) {
+				IndexOF io = (IndexOF) vrb;
+				return obtainValuesReturnListType(io.getList());
+			} else if (vrb instanceof Last) {
+				Last l = (Last) vrb;
+				return obtainValuesReturnListType(l.getList1());
+			} else if (vrb instanceof First) {
+				First f = (First) vrb;
+				return obtainValuesReturnListType(f.getList2());
+			}
+		} else if (vrb instanceof FunctionCall) {
+			FunctionCall fc = (FunctionCall) vrb;
+			DefineF df = (DefineF) fc.getMethod();
+			if (typeFunction.get(df.getName()) == null) {
+				obtainDefineType(df);
+			}
+			return (typeFunction.get(df.getName()));
+		}
+		return "Boolean";
+	}
+
+	public String obtainValuesReturnStringType(ValuesReturnString vrs) {
+		if (vrs instanceof SimpleValuesReturn) {
+			EObject container = ((SimpleValuesReturn) vrs).eContainer();
+			while (!(container instanceof DefineF)) {
+				container = container.eContainer();
+			}
+			DefineF df = (DefineF) container;
+			return (typeParameter.get(df.getName()).get(((SimpleValuesReturn) vrs).getId()));
+		} else if (vrs instanceof Conditional) {
+			if (vrs instanceof If) {
+				if (typeIf.get((If) vrs) == null)
+					obtainIfType((If) vrs);
+				return (typeIf.get((If) vrs));
+			} else if (vrs instanceof Cond) {
+				if (typeCond.get((Cond) vrs) == null)
+					obtainCondType((Cond) vrs);
+				return (typeCond.get((Cond) vrs));
+			}
+		} else if (vrs instanceof ListFunctionSomething) {
+			if (vrs instanceof IndexOF) {
+				IndexOF io = (IndexOF) vrs;
+				return obtainValuesReturnListType(io.getList());
+			} else if (vrs instanceof Last) {
+				Last l = (Last) vrs;
+				return obtainValuesReturnListType(l.getList1());
+			} else if (vrs instanceof First) {
+				First f = (First) vrs;
+				return obtainValuesReturnListType(f.getList2());
+			}
+		} else if (vrs instanceof FunctionCall) {
+			FunctionCall fc = (FunctionCall) vrs;
+			DefineF df = (DefineF) fc.getMethod();
+			if (typeFunction.get(df.getName()) == null) {
+				obtainDefineType(df);
+			}
+			return (typeFunction.get(df.getName()));
+		}
+		return "String";
+	}
+
+	public String obtainValuesReturnListType(ValuesReturnList vrl) {
+		if (vrl instanceof SimpleValuesReturn) {
+			EObject container = ((SimpleValuesReturn) vrl).eContainer();
+			while (!(container instanceof DefineF)) {
+				container = container.eContainer();
+			}
+			DefineF df = (DefineF) container;
+			return (typeParameter.get(df.getName()).get(((SimpleValuesReturn) vrl).getId()));
+		} else if (vrl instanceof Conditional) {
+			if (vrl instanceof If) {
+				if (typeIf.get((If) vrl) == null)
+					obtainIfType((If) vrl);
+				return (typeIf.get((If) vrl));
+			} else if (vrl instanceof Cond) {
+				if (typeCond.get((Cond) vrl) == null)
+					obtainCondType((Cond) vrl);
+				return (typeCond.get((Cond) vrl));
+			}
+		} else if (vrl instanceof ListFunctionSomething) {
+			if (vrl instanceof IndexOF) {
+				IndexOF io = (IndexOF) vrl;
+				return obtainValuesReturnListType(io.getList());
+			} else if (vrl instanceof Last) {
+				Last l = (Last) vrl;
+				return obtainValuesReturnListType(l.getList1());
+			} else if (vrl instanceof First) {
+				First f = (First) vrl;
+				return obtainValuesReturnListType(f.getList2());
+			}
+		} else if (vrl instanceof FunctionCall) {
+			FunctionCall fc = (FunctionCall) vrl;
+			DefineF df = (DefineF) fc.getMethod();
+			if (typeFunction.get(df.getName()) == null) {
+				obtainDefineType(df);
+			}
+			return (typeFunction.get(df.getName()));
+		} else {
+			if(vrl instanceof List) {
+				obtainListType((List) vrl);
+				return typeList.get(vrl);
+			} else if(vrl instanceof ListTail) {
+				ListTail lt = (ListTail) vrl;
+				obtainValuesReturnListType(lt.getList());
+			} else if(vrl instanceof Append) {
+				Append a = (Append) vrl;
+				obtainValuesReturnListType(a.getList1());
+			} else if(vrl instanceof Reverse) {
+				Reverse r = (Reverse) vrl;
+				obtainValuesReturnListType(r.getList());
+			} else if(vrl instanceof Remove) {
+				Remove r = (Remove) vrl;
+				obtainValuesReturnListType(r.getList());
+			}
+		}
+		return "ListOfObject";
+	}
 }

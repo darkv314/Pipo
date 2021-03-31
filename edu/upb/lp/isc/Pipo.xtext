@@ -7,12 +7,11 @@ Program:
 	(elements+=AbstractElement)+;
 
 AbstractElement:
-	Expression | DataType | Define | {AbstractElement} SL_COMMENT;
+	Expression | DataType | Define;
 
 @Override
 terminal SL_COMMENT:
-	';' !('\n'|'\r')* ('\r'? '\n')?
-;
+	';' !('\n' | '\r')* ('\r'? '\n')?;
 
 General:
 	Expression | SimpleValuesReturn | DataType;
@@ -27,21 +26,19 @@ ValuesReturnList:
 	SimpleValuesReturn | Conditional | ListFunctionList | List | ListFunctionSomething | FunctionCall;
 
 ValuesReturnInt:
-	SimpleValuesReturn | Conditional | IntValueReturn | IntFunctionInt | ListFunctionInt | StringFunctionInt | FunctionCall | ListFunctionSomething;
+	SimpleValuesReturn | Conditional | IntValueReturn | IntFunctionInt | ListFunctionInt | StringFunctionInt |
+	FunctionCall | ListFunctionSomething;
 
 ValuesReturnBoolean:
-	SimpleValuesReturn | BooleanFunction | IntFunctionBoolean | ListFunctionBoolean | FunctionCall | ListFunctionSomething
-;
+	SimpleValuesReturn | BooleanFunction | IntFunctionBoolean | ListFunctionBoolean | FunctionCall |
+	ListFunctionSomething | StringFunctionBoolean| GeneralFunction | Conditional;
 
 ValuesReturnString:
-	SimpleValuesReturn | StringFunctionString | StringValueReturn | FunctionCall | Conditional | ListFunctionSomething
-;
+	SimpleValuesReturn | StringFunctionString | StringValueReturn | FunctionCall | Conditional | ListFunctionSomething;
 
 GeneralFunction:
-	StringQ | IntegerQ | BooleanQ | ListQ | NullQ;
+	StringQ | IntegerQ | BooleanQ | ListQ ;
 
-NullQ:
-	'(' 'null?' null=(General) ')';
 
 StringQ:
 	'(' 'string?' string=(General) ')';
@@ -53,21 +50,21 @@ BooleanQ:
 	'(' 'boolean?' string=(General) ')';
 
 ListQ:
-	'(' 'list??' string=(General) ')';
+	'(' 'list?' string=(General) ')';
 
 ListFunction:
 	ListFunctionBoolean | ListFunctionInt | ListFunctionSomething | ListFunctionList;
 
 ListFunctionBoolean:
-	'(' 'null' '?' ValuesReturnList ')';
+	'(' 'null?' list=ValuesReturnList ')';
 
 ListFunctionInt:
 	Length | IndexOF;
 
-IndexOF:
-	'(' 'length' list=ValuesReturnList ')';
-
 Length:
+	'(' 'length' list1=ValuesReturnList ')';
+
+IndexOF:
 	'(' 'index-of' list=ValuesReturnList value=ValuesReturnInt ')';
 
 ListFunctionSomething:
@@ -77,10 +74,10 @@ ListRef:
 	'(' 'list-ref' list=ValuesReturnList value=ValuesReturnInt ')';
 
 Last:
-	'(' 'last' list=ValuesReturnList ')';
+	'(' 'last' list1=ValuesReturnList ')';
 
 First:
-	'(' 'first' list=ValuesReturnList ')';
+	'(' 'first' list2=ValuesReturnList ')';
 
 ListFunctionList:
 	Append | Reverse | Remove | ListTail;
@@ -89,13 +86,13 @@ ListTail:
 	'(' 'list-tail' list=ValuesReturnList value=ValuesReturnInt ')';
 
 Append:
-	'(' 'append' list=ValuesReturnList ')';
+	'(' 'append' list1=ValuesReturnList list2=ValuesReturnList ')';
 
 Reverse:
 	'(' 'reverse' list=ValuesReturnList ')';
 
 Remove:
-	'(' 'remove' list=ValuesReturnList value=ValuesReturnInt ')';
+	'(' 'remove' value=ValuesReturnInt  list=ValuesReturnList ')';
 
 IntFunction:
 	IntFunctionInt | IntFunctionBoolean;
@@ -122,16 +119,16 @@ IntFunctionInt:
 	Plus | Minus | Quotient | Product | Remainder | Gcd | Lcm | Abs | IntegerSqrt | Expt;
 
 Plus:
-	'(' '+' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+	'(' '+' value1=ValuesReturnInt value2+=ValuesReturnInt+ ')';
 
 Minus:
-	'(' '-' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+	'(' '-' value1=ValuesReturnInt value2+=ValuesReturnInt+ ')';
 
 Quotient:
 	'(' 'quotient' value1=ValuesReturnInt value2=ValuesReturnInt ')';
 
 Product:
-	'(' '*' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+	'(' '*' value1=ValuesReturnInt value2+=ValuesReturnInt+ ')';
 
 Remainder:
 	'(' 'remainder' value1=ValuesReturnInt value2=ValuesReturnInt ')';
@@ -149,7 +146,7 @@ IntegerSqrt:
 	'(' 'integer-sqrt' value1=ValuesReturnInt ')';
 
 Expt:
-	'(' 'Expt' value1=ValuesReturnInt value2=ValuesReturnInt ')';
+	'(' 'expt' value1=ValuesReturnInt value2=ValuesReturnInt ')';
 
 BooleanFunction:
 	Not | And | Or | Nand | Nor;
@@ -173,7 +170,7 @@ StringFunction:
 	StringFunctionInt | StringFunctionString | StringFunctionBoolean;
 
 StringFunctionString:
-	StringRef | StringSet | SubString | StringCopy | StringAppend | StringUpCase | StringDownCase | StringTitlecase;
+	StringRef | StringSet | SubString | StringAppend | StringUpCase | StringDownCase | StringTitlecase;
 
 StringRef:
 	'(' 'string-ref' stringRef=(ValuesReturnString) ref=(ValuesReturnInt) ')';
@@ -184,11 +181,8 @@ StringSet:
 SubString:
 	'(' 'substring' CompleteString=(ValuesReturnString) from=ValuesReturnInt (to=ValuesReturnInt)? ')';
 
-StringCopy:
-	'(' 'string-copy' (copy=(ValuesReturnString)) ')';
-
 StringAppend:
-	'(' 'string-append' toAppend+=(ValuesReturnString) ')';
+	'(' 'string-append' toAppend=(ValuesReturnString) toAppend2+=(ValuesReturnString)+')';
 
 StringUpCase:
 	'(' 'string-upcase' toUp=ValuesReturnString ')';
@@ -206,10 +200,10 @@ StringFunctionBoolean:
 	StringEq | StringCi | StringContains | StringPrefix | StringSuffix | NonEmptyString;
 
 StringEq:
-	'(' 'string=?' (toCompare+=ValuesReturnString)+ ')';
+	'(' 'string=?' (toCompare=ValuesReturnString) toCompare2=ValuesReturnString ')';
 
 StringCi:
-	'(' 'string-ci=?' (toCompare+=ValuesReturnString)+ ')';
+	'(' 'string-ci=?' (toCompare=ValuesReturnString) toCompare2=ValuesReturnString')';
 
 StringContains:
 	'(' 'string-contains?' container=ValuesReturnString toFound=ValuesReturnString ')';
@@ -221,7 +215,7 @@ StringSuffix:
 	'(' 'string-suffix?' word=ValuesReturnString tail=ValuesReturnString ')';
 
 NonEmptyString:
-	'(' 'non-empty-string?' noEmpty=(Function | Conditional) ')';
+	'(' 'non-empty-string?' noEmpty=General ')';
 
 FunctionCall:
 	'(' (method=[Define]) parameters+=General* ')';
@@ -239,35 +233,32 @@ Conditional:
 	(If | Cond);
 
 Cond:
-	"(" 'cond' ('[' pos+=(ValuesReturnBoolean) result+=(General)? ']')+ ('[' 'else' elseResult+=(General) ']')? ")";
+	"(" 'cond' ('[' pos+=(ValuesReturnBoolean) result+=(General)? ']')+ ('[' 'else' elseResult=(General) ']')? ")";
 
 If:
-	"(" 'if' if+=ValuesReturnBoolean pos1+=(General) pos2=(General) ")";
+	"(" 'if' if=ValuesReturnBoolean pos1=(General) pos2=(General) ")";
 
 DataType:
 	IntValueReturn | StringValueReturn | BooleanValueReturn | List;
 
 List:
-	'(' 'list' (elements+=General)+ ')' | {List} null='null';
-	
+	'(' 'list' (elements+=General)+ ')' | null?='null';
+
 SimpleValuesReturn:
-	id=ID
-;
+	id=ID;
 
 IntValueReturn:
-	int=INT
-;
+	int=INT;
 
 StringValueReturn:
-	string=STRING
-;
+	string=STRING;
 
 BooleanValueReturn:
-	boolean=BOOLEAN
-;
+	boolean=BOOLEAN;
 
 terminal BOOLEAN:
 	('#f' | '#F') | ('#t' | '#T');
-	
+
 @Override
-terminal ID: '^'?('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'-'|'?')*;
+terminal ID:
+	'^'? ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | '0'..'9' | '-' | '?')*;

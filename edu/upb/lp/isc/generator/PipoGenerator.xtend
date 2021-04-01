@@ -102,7 +102,7 @@ class PipoGenerator extends AbstractGenerator {
 
 	HashMap<ArrayList<String>, String> types = new HashMap<ArrayList<String>, String>();
 	ArrayList<FunctionCall> Functions = new ArrayList<FunctionCall>()
-	
+
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
 		val program = resource.allContents.head as Program
 		typesProgram(program)
@@ -113,47 +113,51 @@ class PipoGenerator extends AbstractGenerator {
 			fsa.generateFile(p.name + '.java', generateProgram(program))
 		}
 	}
-	
+
 	def typesProgram(Program program) {
 		for (p : program.elements.filter(Define)) {
 			if (p instanceof DefineV) {
 				val auxF = p.value
-				if(auxF instanceof FunctionCall){
+				if (auxF instanceof FunctionCall) {
 					Functions.add(auxF)
 				}
-			}else if(p instanceof DefineF){
+			} else if (p instanceof DefineF) {
 				for (e : p.body) {
-					if(e instanceof FunctionCall){
+					if (e instanceof FunctionCall) {
 						Functions.add(e)
 					}
 				}
 			}
 		}
 		for (f : program.elements.filter(Function)) {
-			if(f instanceof FunctionCall){
+			if (f instanceof FunctionCall) {
 				Functions.add(f)
 			}
 		}
-		
+
 		for (element : Functions) {
 			typeOnlyFunctionCalls(element)
 		}
-		
+
 		for (p : program.elements.filter(Define)) {
 			if (p instanceof Define) {
 				typeDefine(p)
 			}
 		}
 	}
-	
+
 	def typeOnlyFunctionCalls(FunctionCall fc) {
 		for (element : fc.parameters) {
-			if(element instanceof DataType){
-				types.put(new ArrayList<String>(Arrays.asList(fc.method.name, (fc.method as DefineF).parameter.get(fc.parameters.indexOf(element)))), typeDataType(element, ""))
+			if (element instanceof DataType) {
+				types.put(
+					new ArrayList<String>(
+						Arrays.asList(fc.method.name,
+							(fc.method as DefineF).parameter.get(fc.parameters.indexOf(element)))),
+					typeDataType(element, ""))
 			}
 		}
 	}
-	
+
 	def typeDefine(Define d) {
 		if (d instanceof DefineV) {
 			typeDefineV(d)
@@ -502,7 +506,7 @@ class PipoGenerator extends AbstractGenerator {
 
 						if (aux4 === null) {
 							return "Object"
-						}else{
+						} else {
 							return aux4
 						}
 					}
@@ -1017,8 +1021,12 @@ class PipoGenerator extends AbstractGenerator {
 
 	def typeFunctionCall(FunctionCall fc) {
 		for (element : fc.parameters) {
-			if(element instanceof DataType){
-				types.put(new ArrayList<String>(Arrays.asList(fc.method.name, (fc.method as DefineF).parameter.get(fc.parameters.indexOf(element)))), typeDataType(element, "").toString)
+			if (element instanceof DataType) {
+				types.put(
+					new ArrayList<String>(
+						Arrays.asList(fc.method.name,
+							(fc.method as DefineF).parameter.get(fc.parameters.indexOf(element)))),
+					typeDataType(element, "").toString)
 			}
 		}
 		if (types.get(new ArrayList<String>(Arrays.asList(fc.method.name, "v"))) !== null) {
@@ -1221,11 +1229,38 @@ class PipoGenerator extends AbstractGenerator {
 
 	def typeIf(If if1, String name) {
 		val aux = typeGeneral(if1.pos1, name)
-		if (aux != typeGeneral(if1.pos2, name)) {
-			"Object"
-		} else {
-			aux
+		if ((if1.pos2 instanceof FunctionCall && name.equals((if1.pos2 as FunctionCall).method.name)) && !((if1.pos1 instanceof FunctionCall) && (if1.pos1 as FunctionCall).method.name.equals(name))) {
+			return aux
+		} else if(if1.pos2 instanceof If && !((if1.pos1 instanceof FunctionCall) && (if1.pos1 as FunctionCall).method.name.equals(name))){
+				ifRecursivo(if1.pos2, name, aux)
+			}else {
+			if (aux != typeGeneral(if1.pos2, name)) {
+				"Object"
+			} else {
+				aux
+			}
+
 		}
+	}
+	
+	def ifRecursivo(General if2, String name, Object t){
+		val if1 = if2 as If
+		val aux = typeGeneral(if1.pos1, name)
+		if (if1.pos2 instanceof FunctionCall && name.equals((if1.pos2 as FunctionCall).method.name) && if1.pos1 instanceof FunctionCall && name.equals((if1.pos1 as FunctionCall).method.name)) {
+			return t
+		} else if(if1.pos2 instanceof FunctionCall && name.equals((if1.pos2 as FunctionCall).method.name) && aux.equals(t)){
+			return t
+		}else if(if1.pos2 instanceof If){
+				ifRecursivo(if1.pos2, name, t)
+			}else {
+			if (aux != typeGeneral(if1.pos2, name)) {
+				"Object"
+			} else {
+				aux
+			}
+
+		}
+		
 	}
 
 	def typeDataType(DataType dt, String name) {
@@ -1244,7 +1279,7 @@ class PipoGenerator extends AbstractGenerator {
 		if (list.size == 0) {
 			return "Object"
 		} else if (list.size == 1) {
-		val aux = typeGeneral(list.get(0), name)
+			val aux = typeGeneral(list.get(0), name)
 			return aux
 		} else {
 			val aux = typeGeneral(list.get(0), name)
@@ -1452,7 +1487,8 @@ public class MiMaravillosaClaseQueVieneDeRacketVivaLaCompilacion {
 	«IF b»«generateGeneralWithReturn(cond.result.get(cond.pos.indexOf(e)), name)»«ELSE»«generateGeneral(cond.result.get(cond.pos.indexOf(e)), b, true, name)»«ENDIF»
 }«ENDFOR» «IF cond.elseResult !== null»else{
 	«IF b»«generateGeneralWithReturn(cond.elseResult, name)»«ELSE»«generateGeneral(cond.elseResult, b, true, name)»«ENDIF»
-}«ENDIF»'''
+	}«ELSE» return null;
+«ENDIF»'''
 	}
 
 	def generateIf(If si, boolean b, String name) '''if(«generateValuesReturnBoolean(si.^if, name)»){

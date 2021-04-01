@@ -4,12 +4,14 @@
 package edu.upb.lp.isc.validation;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.validation.Check;
 
 import edu.upb.lp.isc.pipo.Abs;
+import edu.upb.lp.isc.pipo.AbstractElement;
 import edu.upb.lp.isc.pipo.And;
 import edu.upb.lp.isc.pipo.Append;
 import edu.upb.lp.isc.pipo.BooleanFunction;
@@ -94,6 +96,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	HashMap<Cond, String> typeCond = new HashMap<>();
 	HashMap<If, String> typeIf = new HashMap<>();
 	HashMap<String, HashMap<String, String>> typeParameter = new HashMap<String, HashMap<String, String>>();
+	HashMap<String, Integer> defines = new HashMap<>();
 //	HashMap<Cond , String> typeCond = new HashMap<>();
 
 	@Check
@@ -210,18 +213,18 @@ public class PipoValidator extends AbstractPipoValidator {
 					}
 				} else if (g instanceof ListFunctionSomething) {
 					String s1 = "";
-					if (g instanceof IndexOF) {
-						IndexOF io = (IndexOF) g;
-						ValuesReturnList vrl = io.getList();
-						s1 = obtainValuesReturnListType(vrl);
+					if (g instanceof ListRef) {
+						ListRef lr = (ListRef) g;
+						ValuesReturnList vrl = lr.getList();
+						s1 = obtainValuesReturnListType(vrl).substring(6);
 					} else if (g instanceof Last) {
 						Last l = (Last) g;
 						ValuesReturnList vrl = l.getList1();
-						s1 = obtainValuesReturnListType(vrl);
+						s1 = obtainValuesReturnListType(vrl).substring(6);
 					} else if (g instanceof First) {
 						First f = (First) g;
 						ValuesReturnList vrl = f.getList2();
-						s1 = obtainValuesReturnListType(vrl);
+						s1 = obtainValuesReturnListType(vrl).substring(6);
 					}
 					return s1;
 				} else if (g instanceof GeneralFunction) {
@@ -259,16 +262,29 @@ public class PipoValidator extends AbstractPipoValidator {
 			putTypeFunction(checkType(g), name);
 		}
 	}
+	
+	@Check
+	public void checkDefineRepeat(DefineF df) {
+		EObject e = df.eContainer();
+		Program program = (Program) e;
+		EList<AbstractElement> elements = program.getElements();
+		for(AbstractElement a : elements) {
+			if(a instanceof DefineF) {
+				DefineF df1 = (DefineF) a;
+				if(df1.getName().equals(df.getName()) && !df1.equals(df)) {
+					error("The function " + df1.getName() + " has already been declared", PipoPackage.Literals.DEFINE__NAME);
+					break;
+				}
+			}
+		}
+	}
 
 	@Check
 	public void checkDefineType(DefineF df) {
 		obtainDefineType(df);
+		defines.put(df.getName(), defines.get(df.getName())+1);
 		if (typeParameter.get(df.getName()) == null)
 			typeParameter.put(df.getName(), new HashMap<String, String>());
-//		EList<String> parameters = df.getParameter();
-//		for(int i=0; i<parameters.size(); i++) {
-//			obtainExpectedParameterType(parameters.get(i), df.getBody());
-//		}
 		if (typeFunction.get(df.getName()).endsWith("Object")) {
 			warning("This function returns an Object or a list of Objects, be careful!",
 					PipoPackage.Literals.DEFINE_F__BODY);
@@ -467,7 +483,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkPlusParameters(Plus p) {
 		EList<ValuesReturnInt> v2 = p.getValue2();
 		String s = obtainValuesReturnIntType(p.getValue1());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PLUS__VALUE1);
 			} else
@@ -475,7 +491,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		}
 		for (int i = 0; i < v2.size(); i++) {
 			s = obtainValuesReturnIntType(v2.get(i));
-			if (!s.endsWith("Int")) {
+			if (!s.equals("Int")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PLUS__VALUE2);
 				} else
@@ -488,7 +504,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkMinusParameters(Minus m) {
 		EList<ValuesReturnInt> v2 = m.getValue2();
 		String s = obtainValuesReturnIntType(m.getValue1());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.MINUS__VALUE1);
 			} else
@@ -496,7 +512,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		}
 		for (int i = 0; i < v2.size(); i++) {
 			s = obtainValuesReturnIntType(v2.get(i));
-			if (!s.endsWith("Int")) {
+			if (!s.equals("Int")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.MINUS__VALUE2);
 				} else
@@ -509,7 +525,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkProductParameters(Product p) {
 		EList<ValuesReturnInt> v2 = p.getValue2();
 		String s = obtainValuesReturnIntType(p.getValue1());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.PRODUCT__VALUE1);
 			} else
@@ -517,7 +533,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		}
 		for (int i = 0; i < v2.size(); i++) {
 			s = obtainValuesReturnIntType(v2.get(i));
-			if (!s.endsWith("Int")) {
+			if (!s.equals("Int")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.PRODUCT__VALUE2);
@@ -531,13 +547,13 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkQuotientParameters(Quotient q) {
 		String s = obtainValuesReturnIntType(q.getValue1());
 		String s1 = obtainValuesReturnIntType(q.getValue2());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.QUOTIENT__VALUE1);
 			} else
 				error("Int expected, " + s + " given", PipoPackage.Literals.QUOTIENT__VALUE1);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.QUOTIENT__VALUE2);
 			} else
@@ -549,13 +565,13 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkRemainderParameters(Remainder r) {
 		String s = obtainValuesReturnIntType(r.getValue1());
 		String s1 = obtainValuesReturnIntType(r.getValue2());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMAINDER__VALUE1);
 			} else
 				error("Int expected, " + s + " given", PipoPackage.Literals.REMAINDER__VALUE1);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMAINDER__VALUE2);
 			} else
@@ -569,7 +585,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnIntType(v.get(i));
-			if (!s.endsWith("Int")) {
+			if (!s.equals("Int")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.GCD__VALUE1);
 				} else
@@ -584,7 +600,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnIntType(v.get(i));
-			if (!s.endsWith("Int")) {
+			if (!s.equals("Int")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LCM__VALUE1);
 				} else
@@ -596,7 +612,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkAbsParameters(Abs a) {
 		String s = obtainValuesReturnIntType(a.getValue1());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.ABS__VALUE1);
 			} else
@@ -608,14 +624,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkIntFunctionBooleanParameters(IntFunctionBoolean ifb) {
 		String s = obtainValuesReturnIntType(ifb.getBool1());
 		String s1 = obtainValuesReturnIntType(ifb.getBool2());
-		if (!s.endsWith("Int")) {
+		if (!s.equals("Int")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL1);
 			} else
 				error("Int expected, " + s + " given", PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL1);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.INT_FUNCTION_BOOLEAN__BOOL2);
@@ -627,7 +643,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkNotParameters(Not n) {
 		String s = obtainValuesReturnBooleanType(n.getToDeny());
-		if (!s.endsWith("Boolean")) {
+		if (!s.equals("Boolean")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.NOT__TO_DENY);
 			} else
@@ -641,7 +657,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnBooleanType(v.get(i));
-			if (!s.endsWith("Boolean")) {
+			if (!s.equals("Boolean")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.AND__ARGUMENTS_AND);
@@ -657,7 +673,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnBooleanType(v.get(i));
-			if (!s.endsWith("Boolean")) {
+			if (!s.equals("Boolean")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.OR__ARGUMENTS_OR);
@@ -673,7 +689,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnBooleanType(v.get(i));
-			if (!s.endsWith("Boolean")) {
+			if (!s.equals("Boolean")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.NAND__ARGUMENTS_NAND);
@@ -689,7 +705,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = "";
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnBooleanType(v.get(i));
-			if (!s.endsWith("Boolean")) {
+			if (!s.equals("Boolean")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.NOR__ARGUMENTS_NOR);
@@ -702,7 +718,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkStringFunctionIntParameters(StringFunctionInt sfi) {
 		String s = obtainValuesReturnStringType(sfi.getLength());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_FUNCTION_INT__LENGTH);
@@ -715,14 +731,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringEqParameters(StringEq se) {
 		String s = obtainValuesReturnStringType(se.getToCompare());
 		String s1 = obtainValuesReturnStringType(se.getToCompare2());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_EQ__TO_COMPARE);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_EQ__TO_COMPARE);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_EQ__TO_COMPARE2);
@@ -735,14 +751,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringCiParameters(StringCi sc) {
 		String s = obtainValuesReturnStringType(sc.getToCompare());
 		String s1 = obtainValuesReturnStringType(sc.getToCompare2());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_CI__TO_COMPARE);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_CI__TO_COMPARE);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_CI__TO_COMPARE2);
@@ -755,14 +771,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringContainsParameters(StringContains sc) {
 		String s = obtainValuesReturnStringType(sc.getToFound());
 		String s1 = obtainValuesReturnStringType(sc.getContainer());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_CONTAINS__TO_FOUND);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_CONTAINS__TO_FOUND);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_CONTAINS__CONTAINER);
@@ -775,14 +791,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringPrefixParameters(StringPrefix sp) {
 		String s = obtainValuesReturnStringType(sp.getWord());
 		String s1 = obtainValuesReturnStringType(sp.getHead());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_PREFIX__WORD);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_PREFIX__WORD);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_PREFIX__HEAD);
@@ -795,14 +811,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringSufixParameters(StringSuffix sf) {
 		String s = obtainValuesReturnStringType(sf.getWord());
 		String s1 = obtainValuesReturnStringType(sf.getTail());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_SUFFIX__WORD);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_SUFFIX__WORD);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_SUFFIX__TAIL);
@@ -815,14 +831,14 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringRefParameters(StringRef sr) {
 		String s = obtainValuesReturnStringType(sr.getStringRef());
 		String s1 = obtainValuesReturnIntType(sr.getRef());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_REF__STRING_REF);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_REF__STRING_REF);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.STRING_REF__REF);
 			} else
@@ -835,20 +851,20 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = obtainValuesReturnStringType(st.getStringSet());
 		String s1 = obtainValuesReturnStringType(st.getChar());
 		String s2 = obtainValuesReturnIntType(st.getPosition());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_SET__STRING_SET);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.STRING_SET__STRING_SET);
 		}
-		if (!s1.endsWith("String")) {
+		if (!s1.equals("String")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.STRING_SET__CHAR);
 			} else
 				error("String expected, " + s1 + " given", PipoPackage.Literals.STRING_SET__CHAR);
 		}
-		if (!s2.endsWith("Int")) {
+		if (!s2.equals("Int")) {
 			if (s2.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_SET__POSITION);
@@ -862,20 +878,20 @@ public class PipoValidator extends AbstractPipoValidator {
 		String s = obtainValuesReturnStringType(sb.getCompleteString());
 		String s1 = obtainValuesReturnIntType(sb.getTo());
 		String s2 = obtainValuesReturnIntType(sb.getFrom());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.SUB_STRING__COMPLETE_STRING);
 			} else
 				error("String expected, " + s + " given", PipoPackage.Literals.SUB_STRING__COMPLETE_STRING);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.SUB_STRING__TO);
 			} else
 				error("Int expected, " + s1 + " given", PipoPackage.Literals.SUB_STRING__TO);
 		}
-		if (!s2.endsWith("Int")) {
+		if (!s2.equals("Int")) {
 			if (s2.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.SUB_STRING__FROM);
 			} else
@@ -887,7 +903,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	public void checkStringAppendParameters(StringAppend sa) {
 		String s = obtainValuesReturnStringType(sa.getToAppend());
 		EList<ValuesReturnString> v = sa.getToAppend2();
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_APPEND__TO_APPEND);
@@ -896,7 +912,7 @@ public class PipoValidator extends AbstractPipoValidator {
 		}
 		for (int i = 0; i < v.size(); i++) {
 			s = obtainValuesReturnStringType(v.get(i));
-			if (!s.endsWith("String")) {
+			if (!s.equals("String")) {
 				if (s.endsWith("Object")) {
 					warning("This call may not work, the parameter type is Object",
 							PipoPackage.Literals.STRING_APPEND__TO_APPEND2);
@@ -909,7 +925,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkStringUpCaseParameters(StringUpCase su) {
 		String s = obtainValuesReturnStringType(su.getToUp());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_UP_CASE__TO_UP);
@@ -921,7 +937,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkStringDownCaseParameters(StringDownCase sd) {
 		String s = obtainValuesReturnStringType(sd.getToDown());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_DOWN_CASE__TO_DOWN);
@@ -933,7 +949,7 @@ public class PipoValidator extends AbstractPipoValidator {
 	@Check
 	public void checkStringTitleCaseParameters(StringTitlecase st) {
 		String s = obtainValuesReturnStringType(st.getTitle());
-		if (!s.endsWith("String")) {
+		if (!s.equals("String")) {
 			if (s.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object",
 						PipoPackage.Literals.STRING_TITLECASE__TITLE);
@@ -975,7 +991,7 @@ public class PipoValidator extends AbstractPipoValidator {
 			} else
 				error("List expected, " + s + " given", PipoPackage.Literals.INDEX_OF__VALUE);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.INDEX_OF__VALUE);
 			} else
@@ -993,7 +1009,7 @@ public class PipoValidator extends AbstractPipoValidator {
 			} else
 				error("List expected, " + s + " given", PipoPackage.Literals.LIST_REF__LIST);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_REF__VALUE);
 			} else
@@ -1033,7 +1049,7 @@ public class PipoValidator extends AbstractPipoValidator {
 			} else
 				error("List expected, " + s + " given", PipoPackage.Literals.LIST_TAIL__LIST);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.LIST_TAIL__VALUE);
 			} else
@@ -1084,7 +1100,7 @@ public class PipoValidator extends AbstractPipoValidator {
 			} else
 				error("List expected, " + s + " given", PipoPackage.Literals.REMOVE__LIST);
 		}
-		if (!s1.endsWith("Int")) {
+		if (!s1.equals("Int")) {
 			if (s1.endsWith("Object")) {
 				warning("This call may not work, the parameter type is Object", PipoPackage.Literals.REMOVE__VALUE);
 			} else
@@ -1113,13 +1129,13 @@ public class PipoValidator extends AbstractPipoValidator {
 		} else if (vri instanceof ListFunctionSomething) {
 			if (vri instanceof IndexOF) {
 				IndexOF io = (IndexOF) vri;
-				return obtainValuesReturnListType(io.getList());
+				return obtainValuesReturnListType(io.getList()).substring(6);
 			} else if (vri instanceof Last) {
 				Last l = (Last) vri;
-				return obtainValuesReturnListType(l.getList1());
+				return obtainValuesReturnListType(l.getList1()).substring(6);
 			} else if (vri instanceof First) {
 				First f = (First) vri;
-				return obtainValuesReturnListType(f.getList2());
+				return obtainValuesReturnListType(f.getList2()).substring(6);
 			}
 		} else if (vri instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vri;
@@ -1153,13 +1169,13 @@ public class PipoValidator extends AbstractPipoValidator {
 		} else if (vrb instanceof ListFunctionSomething) {
 			if (vrb instanceof IndexOF) {
 				IndexOF io = (IndexOF) vrb;
-				return obtainValuesReturnListType(io.getList());
+				return obtainValuesReturnListType(io.getList()).substring(6);
 			} else if (vrb instanceof Last) {
 				Last l = (Last) vrb;
-				return obtainValuesReturnListType(l.getList1());
+				return obtainValuesReturnListType(l.getList1()).substring(6);
 			} else if (vrb instanceof First) {
 				First f = (First) vrb;
-				return obtainValuesReturnListType(f.getList2());
+				return obtainValuesReturnListType(f.getList2()).substring(6);
 			}
 		} else if (vrb instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrb;
@@ -1193,13 +1209,13 @@ public class PipoValidator extends AbstractPipoValidator {
 		} else if (vrs instanceof ListFunctionSomething) {
 			if (vrs instanceof IndexOF) {
 				IndexOF io = (IndexOF) vrs;
-				return obtainValuesReturnListType(io.getList());
+				return obtainValuesReturnListType(io.getList()).substring(6);
 			} else if (vrs instanceof Last) {
 				Last l = (Last) vrs;
-				return obtainValuesReturnListType(l.getList1());
+				return obtainValuesReturnListType(l.getList1()).substring(6);
 			} else if (vrs instanceof First) {
 				First f = (First) vrs;
-				return obtainValuesReturnListType(f.getList2());
+				return obtainValuesReturnListType(f.getList2()).substring(6);
 			}
 		} else if (vrs instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrs;
@@ -1231,15 +1247,15 @@ public class PipoValidator extends AbstractPipoValidator {
 				return (typeCond.get((Cond) vrl));
 			}
 		} else if (vrl instanceof ListFunctionSomething) {
-			if (vrl instanceof IndexOF) {
-				IndexOF io = (IndexOF) vrl;
-				return obtainValuesReturnListType(io.getList());
+			if (vrl instanceof ListRef) {
+				ListRef lr = (ListRef) vrl;
+				return obtainValuesReturnListType(lr.getList()).substring(6);
 			} else if (vrl instanceof Last) {
 				Last l = (Last) vrl;
-				return obtainValuesReturnListType(l.getList1());
+				return obtainValuesReturnListType(l.getList1()).substring(6);
 			} else if (vrl instanceof First) {
 				First f = (First) vrl;
-				return obtainValuesReturnListType(f.getList2());
+				return obtainValuesReturnListType(f.getList2()).substring(6);
 			}
 		} else if (vrl instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrl;
@@ -1251,7 +1267,10 @@ public class PipoValidator extends AbstractPipoValidator {
 		} else {
 			if(vrl instanceof List) {
 				obtainListType((List) vrl);
-				return typeList.get(vrl);
+//				if(vrl.eContainer() instanceof ListFunctionSomething)
+//					return typeList.get(vrl).substring(6);
+//				else
+					return typeList.get(vrl);
 			} else if(vrl instanceof ListTail) {
 				ListTail lt = (ListTail) vrl;
 				obtainValuesReturnListType(lt.getList());

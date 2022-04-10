@@ -19,7 +19,9 @@ import edu.upb.lp.isc.pipo.BooleanValueReturn;
 import edu.upb.lp.isc.pipo.Cond;
 import edu.upb.lp.isc.pipo.Conditional;
 import edu.upb.lp.isc.pipo.DataType;
+import edu.upb.lp.isc.pipo.Define;
 import edu.upb.lp.isc.pipo.DefineF;
+import edu.upb.lp.isc.pipo.DefineV;
 import edu.upb.lp.isc.pipo.Expt;
 import edu.upb.lp.isc.pipo.First;
 import edu.upb.lp.isc.pipo.Function;
@@ -124,13 +126,15 @@ public class PipoValidator extends AbstractPipoValidator {
 
 	@Check
 	public void checkNumberOfParameter(FunctionCall f) {
-		DefineF d = ((DefineF) f.getMethod());
-		if (d.getParameter().size() < f.getParameters().size()) {
-			error(f.getParameters().size() - d.getParameter().size() + " Excess parameters",
-					PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
-		} else if (d.getParameter().size() > f.getParameters().size()) {
-			error(d.getParameter().size() - f.getParameters().size() + " Missing parameters",
-					PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
+		if(f.getMethod() instanceof DefineF) {
+			DefineF d = ((DefineF) f.getMethod());
+			if (d.getParameter().size() < f.getParameters().size()) {
+				error(f.getParameters().size() - d.getParameter().size() + " Excess parameters",
+						PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
+			} else if (d.getParameter().size() > f.getParameters().size()) {
+				error(d.getParameter().size() - f.getParameters().size() + " Missing parameters",
+						PipoPackage.Literals.FUNCTION_CALL__PARAMETERS);
+			}
 		}
 	}
 
@@ -158,10 +162,18 @@ public class PipoValidator extends AbstractPipoValidator {
 		} else if (g instanceof Function) {
 			if (g instanceof FunctionCall) {
 				FunctionCall fc = (FunctionCall) g;
-				if (typeFunction.get((((FunctionCall) g).getMethod()).getName()) == null) {
-					obtainDefineType((DefineF) fc.getMethod());
+				Define d = fc.getMethod();
+				if(d instanceof DefineV) {
+					if (typeFunction.get(d.getName()) == null) {
+						obtainDefineVType((DefineV) fc.getMethod());
+					}
+					return (typeFunction.get(d.getName()));
+				} else if (d instanceof DefineF) {
+					if (typeFunction.get(d.getName()) == null) {
+						obtainDefineType((DefineF) fc.getMethod());
+					}
+					return (typeFunction.get(d.getName()));
 				}
-				return (typeFunction.get((((FunctionCall) g).getMethod()).getName()));
 			} else if (g instanceof IntFunction) {
 				if (g instanceof IntFunctionInt) {
 					return ("Int");
@@ -248,6 +260,27 @@ public class PipoValidator extends AbstractPipoValidator {
 		}
 		return null;
 	}
+	
+	public void obtainDefineVType(DefineV dv) {
+		General body = dv.getValue();
+		String name = dv.getName();
+		General g = body;
+		putTypeFunction(checkType(g), name);
+	}
+	
+	@Check
+	public void checkDefineVType(DefineV dv) {
+		obtainDefineVType(dv);
+		defines.put(dv.getName(), defines.get(dv.getName())+1);
+		if (typeParameter.get(dv.getName()) == null)
+			typeParameter.put(dv.getName(), new HashMap<String, String>());
+		if (typeFunction.get(dv.getName()).endsWith("Object")) {
+			warning("This function returns an Object or a list of Objects, be careful!",
+					PipoPackage.Literals.DEFINE_V__VALUE);
+		}
+	}
+	
+	
 
 	public void obtainDefineType(DefineF df) {
 		EList<General> body = df.getBody();
@@ -264,13 +297,13 @@ public class PipoValidator extends AbstractPipoValidator {
 	}
 	
 	@Check
-	public void checkDefineRepeat(DefineF df) {
+	public void checkDefineRepeat(Define df) {
 		EObject e = df.eContainer();
 		Program program = (Program) e;
 		EList<AbstractElement> elements = program.getElements();
 		for(AbstractElement a : elements) {
-			if(a instanceof DefineF) {
-				DefineF df1 = (DefineF) a;
+			if(a instanceof Define) {
+				Define df1 = (Define) a;
 				if(df1.getName().equals(df.getName()) && !df1.equals(df)) {
 					error("The function " + df1.getName() + " has already been declared", PipoPackage.Literals.DEFINE__NAME);
 					break;
@@ -1139,11 +1172,18 @@ public class PipoValidator extends AbstractPipoValidator {
 			}
 		} else if (vri instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vri;
-			DefineF df = (DefineF) fc.getMethod();
-			if (typeFunction.get(df.getName()) == null) {
-				obtainDefineType(df);
+			Define df = (Define) fc.getMethod();
+			if(df instanceof DefineF) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineType((DefineF) df);
+				}
+				return (typeFunction.get(df.getName()));
+			} else if(df instanceof DefineV) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineVType((DefineV) df);
+				}
+				return (typeFunction.get(df.getName()));
 			}
-			return (typeFunction.get(df.getName()));
 		}
 		return "Int";
 	}
@@ -1179,11 +1219,18 @@ public class PipoValidator extends AbstractPipoValidator {
 			}
 		} else if (vrb instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrb;
-			DefineF df = (DefineF) fc.getMethod();
-			if (typeFunction.get(df.getName()) == null) {
-				obtainDefineType(df);
+			Define df = (Define) fc.getMethod();
+			if(df instanceof DefineF) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineType((DefineF) df);
+				}
+				return (typeFunction.get(df.getName()));
+			} else if(df instanceof DefineV) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineVType((DefineV) df);
+				}
+				return (typeFunction.get(df.getName()));
 			}
-			return (typeFunction.get(df.getName()));
 		}
 		return "Boolean";
 	}
@@ -1219,11 +1266,18 @@ public class PipoValidator extends AbstractPipoValidator {
 			}
 		} else if (vrs instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrs;
-			DefineF df = (DefineF) fc.getMethod();
-			if (typeFunction.get(df.getName()) == null) {
-				obtainDefineType(df);
+			Define df = (Define) fc.getMethod();
+			if(df instanceof DefineF) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineType((DefineF) df);
+				}
+				return (typeFunction.get(df.getName()));
+			} else if(df instanceof DefineV) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineVType((DefineV) df);
+				}
+				return (typeFunction.get(df.getName()));
 			}
-			return (typeFunction.get(df.getName()));
 		}
 		return "String";
 	}
@@ -1259,11 +1313,18 @@ public class PipoValidator extends AbstractPipoValidator {
 			}
 		} else if (vrl instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) vrl;
-			DefineF df = (DefineF) fc.getMethod();
-			if (typeFunction.get(df.getName()) == null) {
-				obtainDefineType(df);
+			Define df = (Define) fc.getMethod();
+			if(df instanceof DefineF) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineType((DefineF) df);
+				}
+				return (typeFunction.get(df.getName()));
+			} else if(df instanceof DefineV) {
+				if (typeFunction.get(df.getName()) == null) {
+					obtainDefineVType((DefineV) df);
+				}
+				return (typeFunction.get(df.getName()));
 			}
-			return (typeFunction.get(df.getName()));
 		} else {
 			if(vrl instanceof List) {
 				obtainListType((List) vrl);
